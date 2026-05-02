@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CRM Industrial — Ventas y Mantenimiento Pro</title>
+
+<!-- PWA: Manifest y tema -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#185fa5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CRM Industrial">
+<meta name="application-name" content="CRM Industrial">
+<meta name="description" content="CRM para gestión de clientes, pipeline de ventas, actividades y cotizaciones industriales.">
+
+<!-- Íconos -->
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#ffffff;--bg2:#f5f5f4;--bg3:#eeece8;--bg-info:#e6f1fb;--bg-warn:#faeeda;--bg-succ:#eaf3de;--bg-dang:#fcebeb;
+    --tx:#1a1a1a;--tx2:#5f5e5a;--tx3:#9a9894;--tx-info:#185fa5;--tx-warn:#854f0b;--tx-succ:#3b6d11;--tx-dang:#a32d2d;
+    --br:#e5e3de;--br2:#ccc9c2;--br3:#b0ada5;--rad:8px;--rad-lg:12px;
+    --font:'Segoe UI',system-ui,sans-serif
+  }
+  body{font-family:var(--font);background:var(--bg2);color:var(--tx);font-size:14px;min-height:100vh}
+  .app{max-width:1280px;margin:0 auto;background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+  /* NAV */
+  nav{display:flex;align-items:center;gap:4px;padding:10px 18px;border-bottom:1px solid var(--br);background:var(--bg);flex-wrap:wrap;position:sticky;top:0;z-index:100}
+  .nav-logo{font-size:14px;font-weight:600;color:var(--tx2);margin-right:8px;white-space:nowrap}
+  .nb{padding:6px 13px;border:1px solid transparent;border-radius:var(--rad);background:transparent;cursor:pointer;font-size:13px;color:var(--tx2);font-family:var(--font);transition:all .15s}
+  .nb:hover{background:var(--bg2)}.nb.active{background:var(--bg2);color:var(--tx);border-color:var(--br);font-weight:500}
+  .nspc{flex:1}
+  .bp{padding:7px 14px;background:var(--bg-info);color:var(--tx-info);border:1px solid #b5d4f4;border-radius:var(--rad);cursor:pointer;font-size:13px;font-family:var(--font);font-weight:500;transition:all .15s}
+  .bp:hover{background:#d4e8f8}
+  /* CONTENT */
+  .cnt{padding:20px 18px;flex:1}
+  .desk-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+  .sticky-tools{position:sticky;top:62px}
+  .quick-actions{display:flex;gap:8px;flex-wrap:wrap}
+  /* METRICS */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .mcard{background:var(--bg2);border-radius:var(--rad);padding:14px 16px}
+  .mlbl{font-size:11px;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  .mval{font-size:24px;font-weight:600;color:var(--tx)}
+  .msub{font-size:11px;color:var(--tx3);margin-top:3px}
+  /* CARDS */
+  .card{background:var(--bg);border:1px solid var(--br);border-radius:var(--rad-lg);padding:14px 18px;margin-bottom:14px}
+  .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .ct{font-size:13px;font-weight:600;color:var(--tx)}
+  /* BADGES */
+  .bdg{display:inline-block;padding:2px 8px;border-radius:var(--rad);font-size:10px;font-weight:600}
+  .b-prospecto,.b-pro{background:var(--bg-info);color:var(--tx-info)}
+  .b-cliente,.b-cli{background:var(--bg-succ);color:var(--tx-succ)}
+  .b-pendiente,.b-pen{background:var(--bg-warn);color:var(--tx-warn)}
+  .b-completada,.b-com{background:var(--bg-succ);color:var(--tx-succ)}
+  .b-enviada{background:#eeedfe;color:#534ab7}
+  .b-borrador{background:var(--bg2);color:var(--tx2)}
+  .b-aceptada{background:var(--bg-succ);color:var(--tx-succ)}
+  .b-rechazada{background:var(--bg-dang);color:var(--tx-dang)}
+  .ec0{background:#f1efe8;color:#5f5e5a}.ec1{background:var(--bg-info);color:var(--tx-info)}
+  .ec2{background:#eeedfe;color:#534ab7}.ec3{background:var(--bg-warn);color:var(--tx-warn)}
+  .ec4{background:var(--bg-succ);color:var(--tx-succ)}.ec5{background:#d0f0e0;color:#1a6636}.ec6{background:var(--bg-dang);color:var(--tx-dang)}
+  /* LIST ROWS */
+  .lrow{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--br);cursor:pointer;transition:background .1s}
+  .lrow:hover{background:var(--bg2)}.lrow:last-child{border-bottom:none}
+  .av{width:36px;height:36px;border-radius:50%;background:var(--bg-info);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--tx-info);flex-shrink:0}
+  /* KANBAN */
+  .kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
+  .kc{min-width:200px;flex-shrink:0}
+  .kh{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;display:flex;justify-content:space-between;text-transform:uppercase;letter-spacing:.3px}
+  .kdash{font-size:11px;color:var(--tx3);margin-bottom:8px}
+  .kcard{background:var(--bg);border:1px solid var(--br);border-radius:var(--rad);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .1s;position:relative}
+  .kcard:hover{border-color:var(--br3)}
+  .kct{font-size:12px;font-weight:500;color:var(--tx);margin-bottom:3px;line-height:1.4;padding-right:20px}
+  .kcs{font-size:11px;color:var(--tx2)}.kcv{font-size:12px;font-weight:600;color:var(--tx-info);margin-top:6px}
+  /* FORMS & UI */
+  .fg{margin-bottom:13px}
+  .fl{font-size:12px;color:var(--tx2);margin-bottom:5px;display:block;font-weight:500}
+  .fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .f-row{display:flex;gap:6px;align-items:center}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--br2);border-radius:var(--rad);background:var(--bg);color:var(--tx);font-size:13px;font-family:var(--font);outline:none;transition:border .1s}
+  input:focus,select:focus,textarea:focus{border-color:#378add}
+  textarea{height:72px;resize:vertical}
+  .btn-del{background:none;border:none;color:var(--tx3);cursor:pointer;padding:4px;font-size:14px;transition:color .1s;border-radius:4px}
+  .btn-del:hover{color:var(--tx-dang);background:var(--bg-dang)}
+  .btn-icon{padding:6px 10px;border:1px solid var(--br2);border-radius:var(--rad);background:var(--bg2);cursor:pointer;font-size:14px}
+  .btn-icon:hover{background:#e2e0db}
+  /* MODAL */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:40px 16px;overflow-y:auto}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--bg);border-radius:var(--rad-lg);padding:22px;width:480px;max-width:100%;margin:auto}
+  .mtit{font-size:15px;font-weight:600;margin-bottom:18px}
+  .mac{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--br)}
+  .bc{padding:7px 14px;border:1px solid var(--br2);border-radius:var(--rad);background:transparent;cursor:pointer;font-size:13px;font-family:var(--font);color:var(--tx2)}
+  .bc:hover{background:var(--bg2)}
+  /* SEARCH & TABS */
+  .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  .stit{font-size:16px;font-weight:600}
+  .sbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .sbar input{max-width:340px}.sbar select{width:auto;min-width:140px}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .table-wrap{overflow:auto;border:1px solid var(--br);border-radius:var(--rad-lg);background:var(--bg)}
+  .data-table{min-width:860px}
+  .data-table th,.data-table td{padding:10px 12px;vertical-align:middle}
+  .data-table th{position:sticky;top:0;background:var(--bg2);z-index:1}
+  .data-table tbody tr{cursor:pointer}
+  .data-table tbody tr:hover{background:var(--bg2)}
+  .hint{font-size:11px;color:var(--tx3);line-height:1.5}
+  .field-error{border-color:var(--tx-dang)!important;background:var(--bg-dang)!important}
+  .mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .mini-stat{background:var(--bg2);border-radius:var(--rad);padding:10px}
+  .mini-stat b{display:block;font-size:16px;margin-top:2px}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--br);margin-bottom:16px}
+  .tab{padding:8px 16px;font-size:13px;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.on{color:var(--tx);border-bottom-color:var(--tx);font-weight:500}
+  .tab:hover:not(.on){color:var(--tx)}
+  .bk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--tx2);cursor:pointer;margin-bottom:16px;padding:5px 0}
+  .bk:hover{color:var(--tx)}
+  .pbar{height:6px;border-radius:3px;background:var(--bg2);overflow:hidden}
+  .pbf{height:100%;border-radius:3px;background:#378add}
+  /* ACT ICONS */
+  .ai{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .ai-ll{background:#e6f1fb}.ai-vt{background:#eaf3de}.ai-co{background:#eeedfe}.ai-ms{background:#faeeda}.ai-re{background:#faece7}
+  .empty{text-align:center;padding:32px 16px;color:var(--tx3);font-size:13px}
+  .etq{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;padding-top:10px;border-top:1px solid var(--br)}
+  .alert{position:fixed;top:20px;right:20px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:var(--rad);font-size:13px;z-index:500;animation:fadeIn .2s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px 0;border-bottom:1px solid var(--br)}
+  th{font-size:12px;color:var(--tx2);font-weight:500}
+  @media(max-width:700px){
+    .metrics{grid-template-columns:1fr 1fr}
+    .fr{grid-template-columns:1fr}
+    .desk-grid{grid-template-columns:1fr}
+    .sticky-tools{position:static}
+    .mini-grid{grid-template-columns:1fr}
+    .kanban{flex-wrap:nowrap}
+    nav{gap:2px}
+    .nb{padding:5px 8px;font-size:12px}
+  }
+  @media print{nav,.mac,.bp,.nb,.bk,.etq,.btn-icon,.btn-del{display:none!important}.modal-bg{position:relative;background:none}.modal{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav-bar">
+    <span class="nav-logo">⚙️ CRM Industrial</span>
+    <button class="nb active" onclick="nav('dashboard')">Dashboard</button>
+    <button class="nb" onclick="nav('clientes')">Clientes</button>
+    <button class="nb" onclick="nav('pipeline')">Pipeline</button>
+    <button class="nb" onclick="nav('actividades')">Actividades</button>
+    <button class="nb" onclick="nav('cotizaciones')">Cotizaciones</button>
+    <button class="nb" onclick="nav('manual')">Manual técnico</button>
+    <div class="nspc"></div>
+    <span id="sync-indicator" style="font-size:11px;color:var(--tx3);padding:0 4px">⏳ Conectando...</span>
+    <button class="nb" onclick="exportarDatos()" style="font-size:12px">⬇ Exportar</button>
+    <button class="bp" onclick="modal('nueva-actividad')">+ Actividad</button>
+  </nav>
+  <div id="modal-layer" class="modal-bg" onclick="if(event.target===this)closeModal()"></div>
+  <div class="cnt" id="view"></div>
+</div>
+
+<script>
+// VARIABLES ESTATICAS
+const ETAPAS=['Prospectación','Visita técnica','Cotización en proceso','Cotización enviada','Negociación','Cierre ganado','Cerrado perdido'];
+const EC=['ec0','ec1','ec2','ec3','ec4','ec5','ec6'];
+const ATYP=['Llamada','Visita técnica','Correo','Mensaje WhatsApp','Reunión','Cotización'];
+const AICO=['📞','🔧','📧','💬','🤝','📋'];
+const ACL=['ai-ll','ai-vt','ai-co','ai-ms','ai-re','ai-co'];
+
+const DEF_SVCS=['Mantenimiento preventivo','Mantenimiento correctivo','Sistema aire acondicionado','Colector de polvos','Torre de enfriamiento','Filtros para colectores','Filtros HVAC','Canastillas para filtros','Válvulas pulse jet','Ventilación industrial HVAC','Otro'];
+const DEF_IND=['Alimentos','Automotriz','Cementación','Química','Farmacéutica','Siderurgia','Textil','Minería','Petroquímica','Bebidas','Lácteos','Papel','Plástico','Retail','Otro'];
+const DEF_ORI=['Referido','Llamada en frío','LinkedIn','Página web','Exposición industrial','Visita de campo','Correo directo','Otro'];
+
+let st={view:'dashboard',cliId:null,tab:0,search:'',fTipo:'',fActE:'pendiente',fActT:'',fCotE:''};
+let db={C:[],O:[],A:[],Q:[],cfg:{}};
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const today=()=>new Date().toISOString().slice(0,10);
+const fmx=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(n||0);
+const fdt=d=>d?new Date(d+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}):'';
+const ini=t=>(t||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const v=id=>document.getElementById(id);
+const txt=s=>(s||'').toString().replace(/[\u0000-\u001F\u007F<>`]/g,'').trim();
+const norm=s=>txt(s).toLowerCase();
+const money=n=>Math.max(0,parseFloat(n)||0);
+const intn=(n,min=0)=>Math.max(min,parseInt(n)||min);
+const isEmail=s=>!s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+const isPhone=s=>!s||/^[0-9\s()+.-]{7,25}$/.test(s);
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+const cotSubtotal=q=>(q.items||[]).reduce((s,i)=>s+(money(i.qty)*money(i.precio)),0);
+const clienteTexto=c=>[c.nombre,c.empresa,c.tel,c.email,c.industria,c.origen,c.servicio,c.ubicacion].map(norm).join(' ');
+const setInvalid=(el,bad)=>{if(el)el.classList.toggle('field-error',!!bad);return !bad;};
+const getVal=id=>txt(v(id)?.value||'');
+const dtLocal=(fecha,hora)=>new Date(`${fecha||today()}T${hora||'09:00'}:00`);
+const gcalDate=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+const googleCalendarUrl=a=>{
+  const c=byId(db.C,a.cliId)||{};
+  const o=byId(db.O,a.oppId)||{};
+  const ini=dtLocal(a.fecha,a.hora);
+  const fin=new Date(ini.getTime()+60*60*1000);
+  const details=[
+    a.titulo,
+    c.empresa?`Empresa: ${c.empresa}`:'',
+    c.nombre?`Contacto: ${c.nombre}`:'',
+    c.tel?`Tel: ${c.tel}`:'',
+    c.email?`Email: ${c.email}`:'',
+    o.titulo?`Oportunidad: ${o.titulo}`:''
+  ].filter(Boolean).join('\n');
+  const p=new URLSearchParams({action:'TEMPLATE',text:a.titulo||'Actividad CRM',dates:`${gcalDate(ini)}/${gcalDate(fin)}`,details,location:c.ubicacion||''});
+  return `https://calendar.google.com/calendar/render?${p.toString()}`;
+};
+const openCalendar=id=>{const a=byId(db.A,id);if(a)window.open(googleCalendarUrl(a),'_blank','noopener');};
+function syncOppFromCot(q){
+  if(!q||!q.oppId)return;
+  const o=byId(db.O,q.oppId);if(!o)return;
+  const subtotal=cotSubtotal(q);
+  if(subtotal>0)o.valor=subtotal;
+  if(q.estado==='enviada'&&o.etapa<3)o.etapa=3;
+  if(q.estado==='aceptada')o.etapa=5;
+  if(q.estado==='rechazada'&&o.etapa<6)o.etapa=6;
+}
+function promoteClient(cliId){
+  const c=byId(db.C,cliId);
+  if(c&&c.tipo!=='cliente')c.tipo='cliente';
+}
+
+// ── FIREBASE SYNC ──────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBwi8_MUlLvzISaFVQOglRuTDilmi-Ez4w",
+  authDomain: "crm-industrial-8fe5c.firebaseapp.com",
+  projectId: "crm-industrial-8fe5c",
+  storageBucket: "crm-industrial-8fe5c.firebasestorage.app",
+  messagingSenderId: "139463402150",
+  appId: "1:139463402150:web:50fe54a64f4c820ee4ca67"
+};
+
+let firestore = null;
+let skipNextSnapshot = false;
+
+function setSyncStatus(status) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const cfg = {
+    online:   { icon:'🟢', label:'Sincronizado',     color:'var(--tx-succ)' },
+    offline:  { icon:'🔴', label:'Sin conexión',      color:'var(--tx-dang)' },
+    syncing:  { icon:'🔄', label:'Sincronizando...',  color:'var(--tx-warn)' },
+    waiting:  { icon:'⏳', label:'Conectando...',     color:'var(--tx3)'     }
+  };
+  const s = cfg[status] || cfg.waiting;
+  el.textContent = s.icon + ' ' + s.label;
+  el.style.color = s.color;
+}
+
+function firestoreDoc() {
+  return firestore.collection('crm_industrial').doc('v3');
+}
+
+function normalizeDb(data) {
+  const d = data || {};
+  d.C = Array.isArray(d.C) ? d.C : [];
+  d.O = Array.isArray(d.O) ? d.O : [];
+  d.A = Array.isArray(d.A) ? d.A : [];
+  d.Q = Array.isArray(d.Q) ? d.Q : [];
+  if (!d.cfg || !d.cfg.svcs) d.cfg = { svcs: DEF_SVCS, ind: DEF_IND, ori: DEF_ORI };
+  d.cfg.svcs = d.cfg.svcs || DEF_SVCS;
+  d.cfg.ind  = d.cfg.ind  || DEF_IND;
+  d.cfg.ori  = d.cfg.ori  || DEF_ORI;
+  return d;
+}
+
+function save() {
+  // Guardar localmente siempre (para offline)
+  try { localStorage.setItem('crm_industrial_v3', JSON.stringify(db)); } catch(e) {}
+  // Subir a Firestore
+  if (!firestore) return;
+  setSyncStatus('syncing');
+  skipNextSnapshot = true;
+  firestoreDoc().set({
+    C: db.C, O: db.O, A: db.A, Q: db.Q, cfg: db.cfg,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(() => setSyncStatus('online'))
+  .catch(err => { console.warn('[Firebase] Error al guardar:', err); setSyncStatus('offline'); skipNextSnapshot = false; });
+}
+
+function load() {
+  try { const r = localStorage.getItem('crm_industrial_v3'); if (r) db = JSON.parse(r); } catch(e) {}
+  db = normalizeDb(db);
+}
+
+function initFirebaseSync() {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firestore = firebase.firestore();
+    // Escuchar cambios en tiempo real
+    firestoreDoc().onSnapshot(doc => {
+      if (skipNextSnapshot) { skipNextSnapshot = false; setSyncStatus('online'); return; }
+      if (doc.exists) {
+        const remoto = normalizeDb(doc.data());
+        db = remoto;
+        try { localStorage.setItem('crm_industrial_v3', JSON.stringify(db)); } catch(e) {}
+        nav(st.view); // Re-renderizar la vista actual
+        setSyncStatus('online');
+      } else {
+        // Primera vez: subir datos locales si hay alguno
+        if (db.C.length || db.O.length || db.A.length || db.Q.length) save();
+        else setSyncStatus('online');
+      }
+    }, err => { console.warn('[Firebase] Sync error:', err); setSyncStatus('offline'); });
+  } catch(e) {
+    console.warn('[Firebase] No se pudo inicializar:', e);
+    setSyncStatus('offline');
+  }
+}
+// ── FIN FIREBASE SYNC ───────────────────────────────────────
+
+load();
+window.addEventListener('load', initFirebaseSync);
+
+function toast(msg,dur=2500){const el=document.createElement('div');el.className='alert';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),dur);}
+function exportarDatos(){
+  if(typeof XLSX==='undefined'){toast('⚠ Cargando librería, intenta en unos segundos...');return;}
+  const ETAPAS_MAP=['Prospectación','Visita técnica','Cotización en proceso','Cotización enviada','Negociación','Cierre ganado','Cerrado perdido'];
+  const ATYP_MAP=['Llamada','Visita técnica','Correo','Mensaje WhatsApp','Reunión','Cotización'];
+  const wb=XLSX.utils.book_new();
+
+  // ── HOJA 1: CLIENTES ──
+  const ws_cli=XLSX.utils.json_to_sheet(db.C.length?db.C.map(c=>({
+    'Nombre':c.nombre||'','Empresa':c.empresa||'','Teléfono':c.tel||'','Email':c.email||'',
+    'Ubicación planta/empresa':c.ubicacion||'','Tipo':c.tipo||'','Industria':c.industria||'',
+    'Origen':c.origen||'','Servicio de interés':c.servicio||'',
+    'Opp. activas':db.O.filter(o=>o.cliId===c.id&&o.etapa<5).length,
+    'Act. pendientes':db.A.filter(a=>a.cliId===c.id&&a.estado==='pendiente').length,
+    'Total ganado ($MXN)':db.O.filter(o=>o.cliId===c.id&&o.etapa===5).reduce((s,o)=>s+(o.valor||0),0),
+    'Alta':c.creado||''
+  })):[{}]);
+  ws_cli['!cols']=[22,26,14,28,36,12,16,18,28,14,16,18,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws_cli,'Clientes');
+
+  // ── HOJA 2: OPORTUNIDADES ──
+  const ws_opp=XLSX.utils.json_to_sheet(db.O.length?db.O.map(o=>{const c=db.C.find(x=>x.id===o.cliId);return{
+    'Título':o.titulo||'','Empresa':c?c.empresa:'','Cliente':c?c.nombre:'',
+    'Servicio':o.servicio||'','Valor ($MXN)':o.valor||0,
+    'Etapa':ETAPAS_MAP[o.etapa]||o.etapa,'Fecha cierre est.':o.cierreEst||'',
+    'Creación':o.creado||''
+  };}):[{}]);
+  ws_opp['!cols']=[36,24,22,26,16,22,18,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws_opp,'Oportunidades');
+
+  // ── HOJA 3: ACTIVIDADES ──
+  const ws_act=XLSX.utils.json_to_sheet(db.A.length?db.A.map(a=>{const c=db.C.find(x=>x.id===a.cliId);const o=db.O.find(x=>x.id===a.oppId);return{
+    'Título':a.titulo||'','Tipo':ATYP_MAP[a.tipo]||a.tipo,'Estado':a.estado||'',
+    'Fecha':a.fecha||'','Hora':a.hora||'','Cliente':c?c.nombre:'','Empresa':c?c.empresa:'',
+    'Oportunidad':o?o.titulo:''
+  };}):[{}]);
+  ws_act['!cols']=[36,16,12,12,8,22,24,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws_act,'Actividades');
+
+  // ── HOJA 4: COTIZACIONES (una fila por concepto) ──
+  const rows_cot=[];
+  db.Q.forEach(q=>{
+    const c=db.C.find(x=>x.id===q.cliId);
+    const o=db.O.find(x=>x.id===q.oppId);
+    const items=Array.isArray(q.items)?q.items:[];
+    const sub=items.reduce((s,i)=>s+(i.qty||0)*(i.precio||0),0);
+    (items.length?items:[{}]).forEach((item,idx)=>rows_cot.push({
+      'No. Cotización':idx===0?q.num||'':'','Fecha':idx===0?q.fecha||'':'',
+      'Estado':idx===0?q.estado||'':'','Empresa':idx===0?(c?c.empresa:''):'',
+      'Cliente':idx===0?(c?c.nombre:''):'','Oportunidad':idx===0?(o?o.titulo:''):'',
+      'Concepto':item.desc||'','Cantidad':item.qty||'','Precio unitario ($MXN)':item.precio||'',
+      'Importe ($MXN)':(item.qty||0)*(item.precio||0)||'',
+      'Subtotal ($MXN)':idx===0?sub:'','IVA 16% ($MXN)':idx===0?sub*0.16:'',
+      'Total ($MXN)':idx===0?sub*1.16:''
+    }));
+  });
+  const ws_cot=XLSX.utils.json_to_sheet(rows_cot.length?rows_cot:[{}]);
+  ws_cot['!cols']=[16,12,10,24,22,30,34,10,22,18,18,16,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws_cot,'Cotizaciones');
+
+  XLSX.writeFile(wb,'CRM_Industrial_'+today()+'.xlsx');
+  toast('✓ Exportado a Excel correctamente');
+}
+
+function nav(view,params={}){
+  st.view=view;Object.assign(st,params);
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  const idx={dashboard:0,clientes:1,'cliente-detalle':1,pipeline:2,actividades:3,cotizaciones:4,manual:5};
+  const btns=document.querySelectorAll('#nav-bar .nb');
+  if(idx[view]!==undefined&&btns[idx[view]])btns[idx[view]].classList.add('active');
+  render();window.scrollTo(0,0);
+}
+
+function render(){
+  const el=v('view');
+  const map={dashboard:renderDash,clientes:renderCli,'cliente-detalle':renderCliDet,pipeline:renderPipe,actividades:renderActs,cotizaciones:renderCots,manual:renderManual};
+  el.innerHTML=(map[st.view]||renderDash)();
+}
+
+// ══ DASHBOARD ══
+function renderDash(){
+  const pros=db.C.filter(c=>c.tipo==='prospecto').length;
+  const clis=db.C.filter(c=>c.tipo==='cliente').length;
+  const pipe$=db.O.filter(o=>o.etapa<5).reduce((s,o)=>s+(o.valor||0),0);
+  const ganado$=db.O.filter(o=>o.etapa===5).reduce((s,o)=>s+(o.valor||0),0);
+  const todActs=db.A.filter(a=>a.fecha===today()&&a.estado==='pendiente');
+  const cotEnv=db.Q.filter(q=>q.estado==='enviada').length;
+  const pEtapas=ETAPAS.slice(0,5).map((e,i)=>{const o=db.O.filter(x=>x.etapa===i);return{e,n:o.length,v:o.reduce((s,x)=>s+(x.valor||0),0)};});
+  const mx=Math.max(...pEtapas.map(x=>x.v),1);
+  return`
+  <div class="metrics">
+    <div class="mcard"><div class="mlbl">Prospectos activos</div><div class="mval">${pros}</div><div class="msub">${clis} clientes en cartera</div></div>
+    <div class="mcard"><div class="mlbl">Pipeline activo</div><div class="mval">${fmx(pipe$)}</div><div class="msub">${db.O.filter(o=>o.etapa<5).length} oportunidades</div></div>
+    <div class="mcard"><div class="mlbl">Ventas cerradas</div><div class="mval">${fmx(ganado$)}</div><div class="msub">${db.O.filter(o=>o.etapa===5).length} operaciones ganadas</div></div>
+    <div class="mcard"><div class="mlbl">Actividades hoy</div><div class="mval">${todActs.length}</div><div class="msub">${cotEnv} cotizaciones esperando respuesta</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="ch"><span class="ct">Pipeline por etapa</span></div>
+      ${pEtapas.map(x=>`
+        <div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-bottom:3px">
+            <span>${x.e}</span><span style="font-weight:600;color:var(--tx)">${fmx(x.v)} <span style="font-weight:400;color:var(--tx3)">(${x.n})</span></span>
+          </div>
+          <div class="pbar"><div class="pbf" style="width:${Math.round(x.v/mx*100)}%"></div></div>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Actividades de hoy</span><button class="bp" style="font-size:12px;padding:5px 10px" onclick="modal('nueva-actividad')">+ Agregar</button></div>
+      ${todActs.length===0?'<div class="empty">Sin actividades pendientes para hoy 🎉</div>':''}
+      ${todActs.map(a=>{const c=db.C.find(x=>x.id===a.cliId);return`
+        <div class="lrow" onclick="modal('act-det','${a.id}')">
+          <div class="ai ${ACL[a.tipo]}">${AICO[a.tipo]}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.titulo)}</div>
+            <div style="font-size:11px;color:var(--tx2)">${c?esc(c.empresa):''} · ${a.hora}</div>
+          </div>
+          <button class="btn-del" onclick="event.stopPropagation();eliminarAct('${a.id}')">🗑️</button>
+        </div>`}).join('')}
+    </div>
+  </div>`;
+}
+
+// ══ CLIENTES ══
+function renderCli(){
+  const s=(st.search||'').toLowerCase(),ft=st.fTipo||'';
+  const lista=db.C.filter(c=>{
+    const ms=!s||clienteTexto(c).includes(s);
+    const mt=!ft||c.tipo===ft;return ms&&mt;
+  });
+  const totalPipe=lista.reduce((s,c)=>s+db.O.filter(o=>o.cliId===c.id&&o.etapa<5).reduce((a,o)=>a+money(o.valor),0),0);
+  const actsPend=lista.reduce((s,c)=>s+db.A.filter(a=>a.cliId===c.id&&a.estado==='pendiente').length,0);
+  return`
+  <div class="sh">
+    <span class="stit">Clientes y prospectos <span style="font-weight:400;color:var(--tx2);font-size:14px">(${db.C.length})</span></span>
+    <div class="quick-actions">
+      <button class="bp" onclick="modal('nuevo-cliente')">+ Nuevo cliente</button>
+      <button class="bp" onclick="importarContactos()" style="background:#eaf3de;color:#3b6d11;border-color:#a8d580;" title="Importar desde agenda del teléfono">📱 Importar contactos</button>
+      <button class="nb" onclick="exportarDatos()">Exportar Excel</button>
+    </div>
+  </div>
+  <div class="sbar">
+    <input type="search" placeholder="Buscar nombre, empresa, teléfono, correo, industria, servicio..." value="${esc(st.search||'')}" oninput="st.search=this.value;render()" autofocus>
+    <select onchange="st.fTipo=this.value;render()">
+      <option value="">Todos los tipos</option>
+      <option value="prospecto" ${ft==='prospecto'?'selected':''}>Prospectos</option>
+      <option value="cliente" ${ft==='cliente'?'selected':''}>Clientes activos</option>
+    </select>
+  </div>
+  <div class="desk-grid">
+    <div class="table-wrap">
+      ${lista.length===0?'<div class="empty">Sin resultados para la búsqueda</div>':`
+      <table class="data-table">
+        <thead><tr><th>Empresa / contacto</th><th>Servicio</th><th>Contacto</th><th>Pipeline</th><th>Actividades</th><th>Tipo</th></tr></thead>
+        <tbody>
+        ${lista.map(c=>{
+          const opAct=db.O.filter(o=>o.cliId===c.id&&o.etapa<5);
+          const op=opAct.length;
+          const ac=db.A.filter(a=>a.cliId===c.id&&a.estado==='pendiente').length;
+          const pipe=opAct.reduce((s,o)=>s+money(o.valor),0);
+          return`<tr onclick="nav('cliente-detalle',{cliId:'${c.id}',tab:0})">
+            <td><div style="display:flex;align-items:center;gap:10px"><div class="av">${ini(c.empresa)}</div><div><div style="font-size:13px;font-weight:600">${esc(c.empresa||'Sin empresa')}</div><div style="font-size:12px;color:var(--tx2)">${esc(c.nombre||'Sin contacto')} · ${esc(c.industria||'')}</div></div></div></td>
+            <td><div style="font-size:12px">${esc(c.servicio||'')}</div><div class="hint">${esc(c.origen||'')}</div></td>
+            <td><div style="font-size:12px">${esc(c.tel||'')}</div><div class="hint">${esc(c.email||'')}</div></td>
+            <td><b>${fmx(pipe)}</b><div class="hint">${op} oportunidades activas</div></td>
+            <td><b>${ac}</b><div class="hint">pendientes</div></td>
+            <td><span class="bdg ${c.tipo==='prospecto'?'b-pro':'b-cli'}">${c.tipo==='prospecto'?'Prospecto':'Cliente'}</span></td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table>`}
+    </div>
+    <div class="sticky-tools">
+      <div class="card">
+        <div class="ct" style="margin-bottom:10px">Resumen filtrado</div>
+        <div class="mini-grid">
+          <div class="mini-stat"><span class="hint">Registros</span><b>${lista.length}</b></div>
+          <div class="mini-stat"><span class="hint">Pendientes</span><b>${actsPend}</b></div>
+          <div class="mini-stat"><span class="hint">Pipeline</span><b>${fmx(totalPipe)}</b></div>
+          <div class="mini-stat"><span class="hint">Clientes</span><b>${lista.filter(c=>c.tipo==='cliente').length}</b></div>
+        </div>
+        <div class="hint" style="margin-top:10px">La búsqueda consulta nombre, empresa, teléfono, correo, industria, origen, servicio y ubicación.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══ DETALLE CLIENTE ══
+function renderCliDet(){
+  const c=db.C.find(x=>x.id===st.cliId);
+  if(!c)return'<div class="empty">Cliente no encontrado</div>';
+  const tab=st.tab||0;
+  const ops=db.O.filter(o=>o.cliId===c.id);
+  const acs=db.A.filter(a=>a.cliId===c.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const qts=db.Q.filter(q=>q.cliId===c.id);
+  return`
+  <div class="bk" onclick="nav('clientes')">← Volver a clientes</div>
+  <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap">
+    <div class="av" style="width:52px;height:52px;font-size:18px">${ini(c.empresa)}</div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+        <span style="font-size:17px;font-weight:600">${esc(c.nombre)}</span>
+        <span class="bdg ${c.tipo==='prospecto'?'b-pro':'b-cli'}">${c.tipo==='prospecto'?'Prospecto':'Cliente'}</span>
+      </div>
+      <div style="font-size:13px;color:var(--tx2);margin-top:3px">${esc(c.empresa)} · ${esc(c.industria||'')}</div>
+      <div style="display:flex;gap:16px;margin-top:7px;flex-wrap:wrap">
+        <a href="tel:${esc(c.tel)}" style="font-size:12px;color:var(--tx2);text-decoration:none">📞 ${esc(c.tel)}</a>
+        <a href="mailto:${esc(c.email)}" style="font-size:12px;color:var(--tx-info);text-decoration:none">📧 ${esc(c.email)}</a>
+        ${c.ubicacion?`<span style="font-size:12px;color:var(--tx2)">📍 ${esc(c.ubicacion)}</span>`:''}
+      </div>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="bp" onclick="modal('nueva-opp','${c.id}')">+ Oportunidad</button>
+      <button class="nb" onclick="modal('nueva-actividad','${c.id}')">+ Actividad</button>
+      <button class="nb" onclick="modal('nueva-cot','${c.id}')">+ Cotización</button>
+      <button class="nb" onclick="modal('editar-cli','${c.id}')">✏️ Editar</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${tab===0?'on':''}" onclick="st.tab=0;render()">Oportunidades (${ops.length})</div>
+    <div class="tab ${tab===1?'on':''}" onclick="st.tab=1;render()">Actividades (${acs.length})</div>
+    <div class="tab ${tab===2?'on':''}" onclick="st.tab=2;render()">Cotizaciones (${qts.length})</div>
+  </div>
+  ${tab===0?`
+    ${ops.length===0?'<div class="empty">Sin oportunidades registradas.</div>':''}
+    ${ops.map(o=>`
+      <div class="card" style="margin-bottom:12px;position:relative;">
+        <button class="btn-del" style="position:absolute;top:10px;right:10px;" onclick="eliminarOpp('${o.id}')" title="Eliminar oportunidad">🗑️</button>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding-right:30px;">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">${esc(o.titulo)}</div>
+            <div style="font-size:12px;color:var(--tx2);margin-top:3px">🔧 ${esc(o.servicio)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:700;color:var(--tx-info)">${fmx(o.valor)}</div>
+            <span class="bdg ${EC[o.etapa]}" style="margin-top:5px;display:inline-block">${ETAPAS[o.etapa]}</span>
+          </div>
+        </div>
+        <div class="etq">
+          <span style="font-size:11px;color:var(--tx3);line-height:24px;margin-right:4px">Mover a:</span>
+          ${ETAPAS.map((e,i)=>`<button class="nb ${o.etapa===i?'active':''}" style="font-size:10px;padding:3px 8px" onclick="moverEt('${o.id}',${i})">${e}</button>`).join('')}
+        </div>
+      </div>`).join('')}`:''}
+  ${tab===1?`
+    ${acs.length===0?'<div class="empty">Sin actividades registradas</div>':''}
+    <div class="card" style="padding:0">
+    ${acs.map(a=>`
+      <div class="lrow" onclick="modal('act-det','${a.id}')">
+        <div class="ai ${ACL[a.tipo]}">${AICO[a.tipo]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500">${esc(a.titulo)}</div>
+          <div style="font-size:11px;color:var(--tx2)">${fdt(a.fecha)} ${a.hora?'· '+a.hora:''} · ${ATYP[a.tipo]}</div>
+        </div>
+        <span class="bdg b-${a.estado}">${a.estado}</span>
+        <button class="btn-del" onclick="event.stopPropagation();eliminarAct('${a.id}')">🗑️</button>
+      </div>`).join('')}
+    </div>`:''}
+  ${tab===2?`
+    ${qts.length===0?'<div class="empty">Sin cotizaciones</div>':''}
+    <div class="card" style="padding:0">
+    ${qts.map(q=>{const tot=q.items.reduce((s,i)=>s+(i.qty||0)*(i.precio||0),0);return`
+      <div class="lrow" onclick="modal('cot-det','${q.id}')">
+        <div class="av" style="background:var(--bg2);color:var(--tx2)">📋</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${esc(q.num)}</div>
+          <div style="font-size:11px;color:var(--tx2)">${fdt(q.fecha)} · ${q.items.length} conceptos</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:700">${fmx(tot)}</div>
+          <span class="bdg b-${q.estado}">${q.estado}</span>
+        </div>
+        <button class="btn-del" onclick="event.stopPropagation();eliminarCot('${q.id}')">🗑️</button>
+      </div>`;}).join('')}
+    </div>`:''}`;
+}
+
+// ══ PIPELINE ══
+function renderPipe(){
+  const pipe$=db.O.filter(o=>o.etapa<5).reduce((s,o)=>s+(o.valor||0),0);
+  return`
+  <div class="sh">
+    <span class="stit">Pipeline de ventas <span style="font-size:13px;font-weight:400;color:var(--tx2)">${fmx(pipe$)} en proceso</span></span>
+    <button class="bp" onclick="modal('nueva-opp')">+ Nueva oportunidad</button>
+  </div>
+  <div class="kanban">
+    ${ETAPAS.map((etapa,i)=>{
+      const ops=db.O.filter(o=>o.etapa===i);
+      const tot=ops.reduce((s,o)=>s+(o.valor||0),0);
+      return`
+      <div class="kc">
+        <div class="kh"><span>${etapa}</span><span style="background:var(--bg2);padding:1px 6px;border-radius:10px">${ops.length}</span></div>
+        <div class="kdash">${fmx(tot)}</div>
+        ${ops.map(o=>{const c=db.C.find(x=>x.id===o.cliId);return`
+          <div class="kcard" onclick="nav('cliente-detalle',{cliId:'${o.cliId}',tab:0})">
+            <button class="btn-del" style="position:absolute;top:5px;right:5px;padding:2px;font-size:12px;" onclick="event.stopPropagation();eliminarOpp('${o.id}')">🗑️</button>
+            <div class="kct">${esc(o.titulo)}</div>
+            <div class="kcs">${c?esc(c.empresa):'—'}</div>
+            <div class="kcv">${fmx(o.valor)}</div>
+          </div>`}).join('')}
+      </div>`;}).join('')}
+  </div>`;
+}
+
+// ══ ACTIVIDADES ══
+function renderActs(){
+  const fe=st.fActE||'',ft=st.fActT||'';
+  let acs=db.A.filter(a=>{
+    const me=!fe||a.estado===fe;
+    const mt=ft===''||a.tipo===parseInt(ft);
+    return me&&mt;
+  }).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const grps={};acs.forEach(a=>{if(!grps[a.fecha])grps[a.fecha]=[];grps[a.fecha].push(a);});
+  return`
+  <div class="sh">
+    <span class="stit">Actividades</span>
+    <button class="bp" onclick="modal('nueva-actividad')">+ Programar actividad</button>
+  </div>
+  <div class="sbar">
+    <select onchange="st.fActE=this.value;render()">
+      <option value="">Todos los estados</option>
+      <option value="pendiente" ${fe==='pendiente'?'selected':''}>Pendientes</option>
+      <option value="completada" ${fe==='completada'?'selected':''}>Completadas</option>
+    </select>
+    <select onchange="st.fActT=this.value;render()">
+      <option value="">Todos los tipos</option>
+      ${ATYP.map((t,i)=>`<option value="${i}" ${ft==String(i)?'selected':''}>${t}</option>`).join('')}
+    </select>
+  </div>
+  ${Object.keys(grps).length===0?'<div class="empty">Sin actividades</div>':''}
+  ${Object.keys(grps).map(fecha=>{
+    return`
+    <div style="font-size:11px;font-weight:600;color:var(--tx2);margin:16px 0 8px">${fdt(fecha)}</div>
+    <div class="card" style="padding:0">
+      ${grps[fecha].map(a=>{const c=db.C.find(x=>x.id===a.cliId);return`
+        <div class="lrow">
+          <div class="ai ${ACL[a.tipo]}">${AICO[a.tipo]}</div>
+          <div style="flex:1;min-width:0;cursor:pointer" onclick="modal('act-det','${a.id}')">
+            <div style="font-size:13px;font-weight:500">${esc(a.titulo)}</div>
+            <div style="font-size:11px;color:var(--tx2)">${c?esc(c.empresa):''} ${a.hora?'· '+a.hora:''}</div>
+          </div>
+          <span class="bdg b-${a.estado}">${a.estado}</span>
+          <button class="btn-icon" title="Abrir en Google Calendar" onclick="openCalendar('${a.id}')">📅</button>
+          <button class="btn-del" onclick="eliminarAct('${a.id}')">🗑️</button>
+        </div>`}).join('')}
+    </div>`;}).join('')}`;
+}
+
+// ══ COTIZACIONES ══
+function renderCots(){
+  const fe=st.fCotE||'';
+  const cots=db.Q.filter(q=>!fe||q.estado===fe).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  return`
+  <div class="sh">
+    <span class="stit">Cotizaciones</span>
+    <button class="bp" onclick="modal('nueva-cot')">+ Nueva cotización</button>
+  </div>
+  <div class="sbar">
+    <select onchange="st.fCotE=this.value;render()">
+      <option value="">Todos los estados</option>
+      ${['borrador','enviada','aceptada','rechazada'].map(e=>`<option value="${e}" ${fe===e?'selected':''}>${e}</option>`).join('')}
+    </select>
+  </div>
+  <div class="card" style="padding:0;margin-bottom:14px">
+    ${cots.length===0?'<div class="empty">Sin cotizaciones</div>':''}
+    ${cots.map(q=>{const c=db.C.find(x=>x.id===q.cliId);const tot=q.items.reduce((s,i)=>s+(i.qty||0)*(i.precio||0),0);return`
+      <div class="lrow">
+        <div class="av" style="background:var(--bg2);color:var(--tx2)">📋</div>
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="modal('cot-det','${q.id}')">
+          <div style="font-size:13px;font-weight:600">${esc(q.num)}</div>
+          <div style="font-size:12px;color:var(--tx2)">${c?esc(c.empresa):''} · ${fdt(q.fecha)}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;cursor:pointer" onclick="modal('cot-det','${q.id}')">
+          <div style="font-size:14px;font-weight:700">${fmx(tot*1.16)}</div>
+          <span class="bdg b-${q.estado}">${q.estado}</span>
+        </div>
+        <button class="btn-del" style="margin-left:8px;" onclick="eliminarCot('${q.id}')">🗑️</button>
+      </div>`;}).join('')}
+  </div>`;
+}
+
+function renderManual(){
+  return`
+  <div class="sh"><span class="stit">Manual técnico</span><button class="bp" onclick="exportarDatos()">Exportar respaldo Excel</button></div>
+  <div class="desk-grid">
+    <div>
+      <div class="card">
+        <div class="ct">Modelo de datos actual</div>
+        <p class="hint" style="margin-top:8px">El CRM conserva las colecciones existentes en LocalStorage bajo la llave <b>crm_industrial_v3</b>: C clientes, O oportunidades, A actividades, Q cotizaciones y cfg catálogos. No se cambió la estructura base; se reforzó el uso de ids para vincular registros.</p>
+        <table class="data-table" style="min-width:0;margin-top:10px">
+          <tbody>
+            <tr><td><b>Cliente</b></td><td>nombre, empresa, tel, email, ubicación, industria, origen, servicio y tipo.</td></tr>
+            <tr><td><b>Oportunidad</b></td><td>cliId enlaza al cliente; valor y etapa se actualizan cuando una cotización vinculada cambia de estado.</td></tr>
+            <tr><td><b>Actividad</b></td><td>cliId y oppId enlazan la agenda con cliente y oportunidad. El botón de Google Calendar abre el evento precargado.</td></tr>
+            <tr><td><b>Cotización</b></td><td>cliId y oppId enlazan cliente/oportunidad. Si se crea sin oportunidad, el CRM genera una oportunidad vinculada automáticamente.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="ct">Reglas automáticas agregadas</div>
+        <p class="hint" style="margin-top:8px">Al capturar una cotización sin oportunidad, se crea la oportunidad con el subtotal de conceptos. Al marcarla enviada, aceptada o rechazada, se sincroniza la etapa de la oportunidad. Al aceptarse, el contacto pasa a cliente activo.</p>
+        <p class="hint" style="margin-top:8px">Las actividades pueden vincularse a una oportunidad y generan una liga directa a Google Calendar con fecha, hora, empresa, contacto, ubicación y detalles comerciales.</p>
+      </div>
+      <div class="card">
+        <div class="ct">Seguridad y validación</div>
+        <p class="hint" style="margin-top:8px">Los campos de texto se normalizan antes de guardar, se bloquean caracteres riesgosos como etiquetas HTML y se valida correo/teléfono en tiempo real al guardar. Las vistas y exportación Word usan escape HTML para reducir riesgo XSS.</p>
+      </div>
+    </div>
+    <div class="sticky-tools">
+      <div class="card">
+        <div class="ct">Google Calendar</div>
+        <p class="hint" style="margin-top:8px">La integración actual abre Google Calendar con el evento ya preparado. Para sincronización automática real con una cuenta Gmail se necesita OAuth 2.0, Client ID de Google Cloud y consentimiento del usuario; no se incrustan credenciales en este archivo por seguridad.</p>
+      </div>
+      <div class="card">
+        <div class="ct">Exportaciones</div>
+        <p class="hint" style="margin-top:8px">Se conservan Excel general y Word por cotización. La exportación Excel mantiene hojas de Clientes, Oportunidades, Actividades y Cotizaciones.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══ MODALES ══
+function modal(tipo,param,extra){
+  const layer=v('modal-layer');let html='';
+  
+  // MODAL: GESTIONAR LISTAS DINAMICAS
+  if(tipo==='gestionar-lista'){
+    const cfgKey=param; const prevModal=extra.prev; const prevParam=extra.param;
+    const labels={ind:'Industrias', svcs:'Servicios / Productos', ori:'Orígenes del contacto'};
+    html=`<div class="modal" style="width:400px">
+      <div class="mtit">⚙️ Gestionar rubros: ${labels[cfgKey]}</div>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid var(--br2);border-radius:var(--rad);padding:8px;margin-bottom:12px;background:var(--bg2)">
+        ${db.cfg[cfgKey].length===0?'<div class="empty" style="padding:10px">Lista vacía</div>':''}
+        ${db.cfg[cfgKey].map((item, idx)=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid var(--br);background:var(--bg);margin-bottom:4px;border-radius:4px">
+            <span style="font-size:13px">${esc(item)}</span>
+            <button class="btn-del" onclick="eliminarRubro('${cfgKey}', ${idx}, '${prevModal}', '${prevParam}')" title="Eliminar rubro">🗑️</button>
+          </div>
+        `).join('')}
+      </div>
+      <div class="f-row">
+        <input type="text" id="nl-val" placeholder="Nombre del nuevo rubro...">
+        <button class="bp" onclick="agregarRubro('${cfgKey}', '${prevModal}', '${prevParam}')">Agregar</button>
+      </div>
+      <div class="mac">
+        <button class="bp" onclick="modal('${prevModal}', '${prevParam}')">Volver al formulario</button>
+      </div>
+    </div>`;
+  }
+  else if(tipo==='nueva-actividad'){
+    const pid=param||'';
+    const copts=db.C.map(c=>`<option value="${c.id}" ${c.id===pid?'selected':''}>${esc(c.empresa)}</option>`).join('');
+    const oppOptions='<option value="">Sin oportunidad vinculada</option>'+db.O.filter(o=>!pid||o.cliId===pid).map(o=>`<option value="${o.id}">${esc(o.titulo)}</option>`).join('');
+    html=`<div class="modal">
+      <div class="mtit">📅 Programar actividad</div>
+      <div class="fg"><label class="fl">Tipo de actividad</label><select id="ma-tipo">${ATYP.map((t,i)=>`<option value="${i}">${t}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Título / descripción</label><input type="text" id="ma-tit" placeholder="Ej: Llamada de seguimiento..." oninput="setInvalid(this,!txt(this.value))"></div>
+      <div class="fg"><label class="fl">Cliente asociado</label><select id="ma-cli" onchange="actualizarOppListAct(this.value)"><option value="">Sin cliente asignado</option>${copts}</select></div>
+      <div class="fg"><label class="fl">Oportunidad vinculada</label><select id="ma-opp">${oppOptions}</select></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Fecha</label><input type="date" id="ma-fecha" value="${today()}"></div>
+        <div class="fg"><label class="fl">Hora</label><input type="time" id="ma-hora" value="09:00"></div>
+      </div>
+      <div class="hint">Al guardar podrás abrir el evento en Google Calendar con cliente, oportunidad, fecha y hora precargados.</div>
+      <div class="mac"><button class="bc" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveAct()">Guardar</button></div>
+    </div>`;
+  }
+  else if(tipo==='nuevo-cliente'){
+    html=`<div class="modal">
+      <div class="mtit">👤 Nuevo cliente / prospecto</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Nombre contacto</label><input type="text" id="nc-nom" placeholder="Ing. Juan Pérez"></div>
+        <div class="fg"><label class="fl">Empresa *</label><input type="text" id="nc-emp" placeholder="Razón social" oninput="setInvalid(this,!txt(this.value))"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Teléfono</label><input type="tel" id="nc-tel" placeholder="55 1234 5678" oninput="setInvalid(this,!isPhone(this.value))"></div>
+        <div class="fg"><label class="fl">Correo electrónico</label><input type="email" id="nc-eml" placeholder="contacto@empresa.com" oninput="setInvalid(this,!isEmail(this.value))"></div>
+      </div>
+      <div class="fg"><label class="fl">Ubicación de planta / empresa</label><input type="text" id="nc-ubi" placeholder="Ej: Carr. Monterrey-Saltillo Km 12, Apodaca, N.L."></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Industria</label>
+          <div class="f-row">
+            <select id="nc-ind">${db.cfg.ind.map(i=>`<option>${esc(i)}</option>`).join('')}</select>
+            <button class="btn-icon" onclick="modal('gestionar-lista', 'ind', {prev:'nuevo-cliente'})" title="Gestionar opciones">⚙️</button>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Origen</label>
+          <div class="f-row">
+            <select id="nc-ori">${db.cfg.ori.map(o=>`<option>${esc(o)}</option>`).join('')}</select>
+            <button class="btn-icon" onclick="modal('gestionar-lista', 'ori', {prev:'nuevo-cliente'})">⚙️</button>
+          </div>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Servicio de interés</label>
+          <div class="f-row">
+            <select id="nc-svc">${db.cfg.svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+            <button class="btn-icon" onclick="modal('gestionar-lista', 'svcs', {prev:'nuevo-cliente'})">⚙️</button>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Tipo</label><select id="nc-tip"><option value="prospecto">Prospecto</option><option value="cliente">Cliente</option></select></div>
+      </div>
+      <div class="mac"><button class="bc" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveCli()">Guardar</button></div>
+    </div>`;
+  }
+  else if(tipo==='nueva-opp'){
+    const pid=param||'';
+    const copts=db.C.map(c=>`<option value="${c.id}" ${c.id===pid?'selected':''}>${esc(c.empresa)}</option>`).join('');
+    html=`<div class="modal">
+      <div class="mtit">💼 Nueva oportunidad</div>
+      <div class="fg"><label class="fl">Cliente *</label><select id="mo-cli"><option value="">Seleccionar...</option>${copts}</select></div>
+      <div class="fg"><label class="fl">Título del proyecto *</label><input type="text" id="mo-tit" oninput="setInvalid(this,!txt(this.value))"></div>
+      <div class="fg"><label class="fl">Servicio / producto</label>
+        <div class="f-row">
+          <select id="mo-svc">${db.cfg.svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+          <button class="btn-icon" onclick="modal('gestionar-lista', 'svcs', {prev:'nueva-opp', param:'${pid}'})">⚙️</button>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Valor (MXN)</label><input type="number" id="mo-val" placeholder="0"></div>
+        <div class="fg"><label class="fl">Etapa actual</label><select id="mo-eta">${ETAPAS.map((e,i)=>`<option value="${i}">${e}</option>`).join('')}</select></div>
+      </div>
+      <div class="mac"><button class="bc" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveOpp()">Guardar oportunidad</button></div>
+    </div>`;
+  }
+  else if(tipo==='act-det'){
+    const a=db.A.find(x=>x.id===param);if(!a)return;
+    const c=byId(db.C,a.cliId);const o=byId(db.O,a.oppId);
+    html=`<div class="modal">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${esc(a.titulo)}</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:12px">${ATYP[a.tipo]} · ${fdt(a.fecha)} ${a.hora?'· '+esc(a.hora):''}</div>
+      <div class="card" style="background:var(--bg2);margin-bottom:12px">
+        <div class="hint">Cliente</div><div style="font-size:13px;font-weight:600">${c?esc(c.empresa):'Sin cliente'}</div>
+        ${o?`<div class="hint" style="margin-top:8px">Oportunidad</div><div style="font-size:13px">${esc(o.titulo)} · ${fmx(o.valor)}</div>`:''}
+      </div>
+      <span class="bdg b-${a.estado}">${a.estado}</span>
+      <div class="mac">
+        <button class="bc" style="color:var(--tx-dang)" onclick="eliminarAct('${a.id}')">🗑 Eliminar</button>
+        <button class="bc" onclick="closeModal()">Cerrar</button>
+        <button class="nb" onclick="openCalendar('${a.id}')" style="background:var(--bg-info);color:var(--tx-info);border-color:#b5d4f4">Abrir en Google Calendar</button>
+        ${a.estado==='pendiente'?`<button class="bp" onclick="compAct('${a.id}');closeModal()">✓ Completar</button>`:''}
+      </div>
+    </div>`;
+  }
+  else if(tipo==='cot-det'){
+    const q=db.Q.find(x=>x.id===param);if(!q)return;
+    const c=db.C.find(x=>x.id===q.cliId);
+    const subtotal=q.items.reduce((s,i)=>s+(i.qty||0)*(i.precio||0),0);
+    const iva=subtotal*0.16;
+    const total=subtotal+iva;
+    const contacto=q.contacto||(c?c.nombre:'')||'';
+    const puesto=q.puesto||'';
+    html=`<div class="modal" style="width:630px;max-width:96vw">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:18px;font-weight:700">📋 ${esc(q.num)}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:3px">Fecha: ${fdt(q.fecha)}</div>
+        </div>
+        <span class="bdg b-${q.estado}" style="font-size:12px;padding:4px 10px">${q.estado.toUpperCase()}</span>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--rad);padding:12px 16px;margin-bottom:18px;border-left:3px solid #378add">
+        <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Datos del cliente</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px">
+          <div><span style="font-size:11px;color:var(--tx3)">Empresa</span><div style="font-size:13px;font-weight:600">${c?esc(c.empresa):'—'}</div></div>
+          <div><span style="font-size:11px;color:var(--tx3)">Industria</span><div style="font-size:13px">${c?esc(c.industria||'—'):'—'}</div></div>
+          <div><span style="font-size:11px;color:var(--tx3)">Contacto</span><div style="font-size:13px;font-weight:600">${esc(contacto)||'—'}</div></div>
+          <div><span style="font-size:11px;color:var(--tx3)">Puesto</span><div style="font-size:13px">${esc(puesto)||'—'}</div></div>
+          ${c&&c.tel?`<div><span style="font-size:11px;color:var(--tx3)">Teléfono</span><div style="font-size:13px">${esc(c.tel)}</div></div>`:''}
+          ${c&&c.email?`<div><span style="font-size:11px;color:var(--tx3)">Email</span><div style="font-size:13px">${esc(c.email)}</div></div>`:''}
+          ${c&&c.ubicacion?`<div style="grid-column:1/-1"><span style="font-size:11px;color:var(--tx3)">Ubicación planta / empresa</span><div style="font-size:13px">${esc(c.ubicacion)}</div></div>`:''}
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Conceptos</div>
+      <div style="overflow-x:auto;margin-bottom:4px">
+        <table style="min-width:500px">
+          <thead>
+            <tr style="background:var(--bg2)">
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;width:45%">Concepto / Descripción</th>
+              <th style="padding:8px 6px;text-align:center;font-size:11px;font-weight:700;width:10%">Cant.</th>
+              <th style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;width:18%">Precio unit.</th>
+              <th style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;width:12%">IVA 16%</th>
+              <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;width:15%">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${q.items.map((i,idx)=>{const imp=(i.qty||0)*(i.precio||0);const ivaRow=imp*0.16;return`<tr style="border-bottom:1px solid var(--br);background:${idx%2===0?'var(--bg)':'var(--bg2)'}"><td style="padding:9px 10px;font-size:13px">${esc(i.desc)}</td><td style="padding:9px 6px;text-align:center;font-size:13px">${i.qty}</td><td style="padding:9px 6px;text-align:right;font-size:13px">${fmx(i.precio)}</td><td style="padding:9px 6px;text-align:right;font-size:12px;color:var(--tx2)">${fmx(ivaRow)}</td><td style="padding:9px 10px;text-align:right;font-size:13px;font-weight:600">${fmx(imp)}</td></tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;margin-bottom:18px">
+        <div style="min-width:240px;border:1px solid var(--br);border-radius:var(--rad);overflow:hidden">
+          <div style="display:flex;justify-content:space-between;padding:7px 14px;background:var(--bg2);font-size:12px"><span style="color:var(--tx2)">Subtotal</span><span style="font-weight:600">${fmx(subtotal)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:7px 14px;border-top:1px solid var(--br);font-size:12px"><span style="color:var(--tx2)">IVA (16%)</span><span style="font-weight:600">${fmx(iva)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:9px 14px;border-top:2px solid var(--br);background:var(--bg-info)"><span style="font-size:14px;font-weight:700;color:var(--tx-info)">TOTAL</span><span style="font-size:16px;font-weight:700;color:var(--tx-info)">${fmx(total)}</span></div>
+        </div>
+      </div>
+      <div class="mac">
+        <button class="bc" style="color:var(--tx-dang)" onclick="eliminarCot('${q.id}')">🗑 Eliminar</button>
+        <button class="bc" onclick="closeModal()">Cerrar</button>
+        <button class="nb" onclick="exportarCotWord('${q.id}')" style="background:var(--bg-succ);color:var(--tx-succ);border-color:#b5dcae;font-weight:600">📄 Exportar a Word</button>
+        ${q.estado==='borrador'?`<button class="bp" onclick="cambiaCot('${q.id}','enviada');closeModal()">Marcar enviada</button>`:''}
+        ${q.estado==='enviada'?`<button class="bp" onclick="cambiaCot('${q.id}','aceptada');closeModal()">✓ Aceptada</button><button class="bc" onclick="cambiaCot('${q.id}','rechazada');closeModal()">Rechazada</button>`:''}
+      </div>
+    </div>`;
+  }
+  else if(tipo==='nueva-cot'){
+    const pid=param||'';
+    const copts=db.C.map(c=>`<option value="${c.id}" ${c.id===pid?'selected':''}>${esc(c.empresa)}</option>`).join('');
+    const nextNum='COT-2025-'+String(db.Q.length+1).padStart(3,'0');
+    let oppOptions = '<option value="">(Opcional) Vincular a Oportunidad...</option>';
+    if (pid) {
+        oppOptions += db.O.filter(o=>o.cliId===pid).map(o=>`<option value="${o.id}">${esc(o.titulo)}</option>`).join('');
+    }
+    const cPre = pid ? db.C.find(x=>x.id===pid) : null;
+    html=`<div class="modal" style="width:560px">
+      <div class="mtit">📋 Nueva cotización</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Número</label><input type="text" id="qn-num" value="${nextNum}"></div>
+        <div class="fg"><label class="fl">Fecha</label><input type="date" id="qn-fch" value="${today()}"></div>
+      </div>
+      <div class="fg"><label class="fl">Cliente *</label><select id="qn-cli" onchange="actualizarDatosCot(this.value)"><option value="">Seleccionar cliente...</option>${copts}</select></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Nombre del contacto</label><input type="text" id="qn-contacto" placeholder="Ing. Juan Pérez" value="${cPre?esc(cPre.nombre||''):''}"></div>
+        <div class="fg"><label class="fl">Puesto del contacto</label><input type="text" id="qn-puesto" placeholder="Ej: Gerente de Mantenimiento"></div>
+      </div>
+      <div class="fg"><label class="fl">Vincular a oportunidad</label><select id="qn-opp">${oppOptions}</select><div class="hint">Si no seleccionas una oportunidad, el CRM creará una automáticamente con esta cotización.</div></div>
+      <div style="border:1px solid var(--br);border-radius:var(--rad);padding:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">Conceptos</div>
+        <div id="qi-cont">
+          <div class="qi" style="display:grid;grid-template-columns:1fr 60px 100px 30px;gap:6px;margin-bottom:8px">
+            <input type="text" placeholder="Descripción del producto/servicio" class="qi-d">
+            <input type="number" placeholder="Qty" class="qi-q" value="1" min="1">
+            <input type="number" placeholder="Precio $" class="qi-p" min="0" step="100">
+            <button class="bc" style="padding:4px" onclick="this.closest('.qi').remove()">✕</button>
+          </div>
+        </div>
+        <button class="nb" style="font-size:12px" onclick="addQI()">+ Agregar concepto</button>
+      </div>
+      <div class="mac"><button class="bc" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveCot()">Guardar cotización</button></div>
+    </div>`;
+  }
+  else if(tipo==='editar-cli'){
+    const c=db.C.find(x=>x.id===param);if(!c)return;
+    html=`<div class="modal">
+      <div class="mtit">✏️ Editar cliente</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Nombre contacto</label><input type="text" id="ec-nom" value="${esc(c.nombre||'')}"></div>
+        <div class="fg"><label class="fl">Empresa</label><input type="text" id="ec-emp" value="${esc(c.empresa||'')}" oninput="setInvalid(this,!txt(this.value))"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Teléfono</label><input type="tel" id="ec-tel" value="${esc(c.tel||'')}" placeholder="55 1234 5678" oninput="setInvalid(this,!isPhone(this.value))"></div>
+        <div class="fg"><label class="fl">Correo electrónico</label><input type="email" id="ec-eml" value="${esc(c.email||'')}" placeholder="contacto@empresa.com" oninput="setInvalid(this,!isEmail(this.value))"></div>
+      </div>
+      <div class="fg"><label class="fl">Ubicación de planta / empresa</label><input type="text" id="ec-ubi" value="${esc(c.ubicacion||'')}" placeholder="Ej: Carr. Monterrey-Saltillo Km 12, Apodaca, N.L."></div>
+      <div class="mac">
+        <button class="bc" style="color:var(--tx-dang)" onclick="eliminarCli('${c.id}')">🗑 Eliminar</button>
+        <button class="bc" onclick="closeModal()">Cancelar</button>
+        <button class="bp" onclick="updCli('${c.id}')">Guardar</button>
+      </div>
+    </div>`;
+  }
+
+  layer.innerHTML=html;layer.classList.add('open');
+}
+
+function closeModal(){const l=v('modal-layer');l.classList.remove('open');l.innerHTML='';}
+
+// ══ FUNCIONES DE RUBROS DINAMICOS ══
+function agregarRubro(key, prev, param) {
+    const val = getVal('nl-val');
+    if(val && !db.cfg[key].includes(val)) {
+        db.cfg[key].push(val);
+        save();
+        modal('gestionar-lista', key, {prev, param}); // recargar
+    }
+}
+function eliminarRubro(key, idx, prev, param) {
+    db.cfg[key].splice(idx, 1);
+    save();
+    modal('gestionar-lista', key, {prev, param}); // recargar
+}
+
+// ══ CRUD Y LOGICA DE NEGOCIO ══
+async function importarContactos(){
+  // Verificar soporte del navegador
+  if(!('contacts' in navigator && 'ContactsManager' in window)){
+    toast('⚠️ Esta función solo está disponible en Chrome para Android');
+    return;
+  }
+  try {
+    // Detectar propiedades disponibles en este dispositivo
+    let propsDisponibles = ['name','tel','email'];
+    try {
+      const soportadas = await navigator.contacts.getProperties();
+      if(soportadas.includes('organization')) propsDisponibles.push('organization');
+    } catch(e2) {}
+    const opts = { multiple: true };
+    const contactos = await navigator.contacts.select(propsDisponibles, opts);
+    if(!contactos || contactos.length === 0){
+      toast('No se seleccionó ningún contacto');
+      return;
+    }
+    let agregados = 0, duplicados = 0;
+    contactos.forEach(c => {
+      const nombre  = (c.name    && c.name[0])         || '';
+      const tel     = (c.tel     && c.tel[0])           || '';
+      const email   = (c.email   && c.email[0])         || '';
+      const empresa = (c.organization && c.organization[0]) || nombre;
+      // Evitar duplicados por teléfono o email
+      const existe = db.C.find(x =>
+        (tel   && x.tel   === tel)   ||
+        (email && x.email === email)
+      );
+      if(existe){ duplicados++; return; }
+      // Requiere al menos nombre y teléfono
+      if(!nombre && !tel){ return; }
+      db.C.push({
+        id:       uid(),
+        nombre:   nombre,
+        empresa:  empresa || nombre,
+        tel:      tel,
+        email:    email,
+        ubicacion:'',
+        industria:'',
+        tipo:     'prospecto',
+        origen:   'Agenda',
+        servicio: '',
+        creado:   today()
+      });
+      agregados++;
+    });
+    save();
+    render();
+    if(duplicados > 0)
+      toast(`✓ ${agregados} contacto(s) importado(s) · ${duplicados} ya existían`);
+    else
+      toast(`✓ ${agregados} contacto(s) importado(s) correctamente`);
+  } catch(e) {
+    if(e.name === 'SecurityError')
+      toast('⚠️ Permiso denegado para acceder a los contactos');
+    else
+      toast('⚠️ No se pudo acceder a los contactos: ' + e.message);
+  }
+}
+
+function saveCli(){
+  const emp=getVal('nc-emp'),email=getVal('nc-eml'),tel=getVal('nc-tel');
+  const ok=[setInvalid(v('nc-emp'),!emp),setInvalid(v('nc-eml'),!isEmail(email)),setInvalid(v('nc-tel'),!isPhone(tel))].every(Boolean);
+  if(!ok){toast('Revisa empresa, teléfono o correo');return;}
+  const c={id:uid(),nombre:getVal('nc-nom'),empresa:emp,tel,email,ubicacion:getVal('nc-ubi'),industria:getVal('nc-ind'),tipo:v('nc-tip').value,origen:getVal('nc-ori'),servicio:getVal('nc-svc'),creado:today()};
+  db.C.push(c);save();closeModal();toast('✓ Cliente guardado');render();
+}
+function updCli(id){
+  const c=db.C.find(x=>x.id===id);if(!c)return;
+  const emp=getVal('ec-emp'),email=getVal('ec-eml'),tel=getVal('ec-tel');
+  const ok=[setInvalid(v('ec-emp'),!emp),setInvalid(v('ec-eml'),!isEmail(email)),setInvalid(v('ec-tel'),!isPhone(tel))].every(Boolean);
+  if(!ok){toast('Revisa empresa, teléfono o correo');return;}
+  c.nombre=getVal('ec-nom');c.empresa=emp;
+  c.tel=tel;c.email=email;c.ubicacion=getVal('ec-ubi');
+  save();closeModal();toast('✓ Cambios guardados');render();
+}
+function eliminarCli(id){
+  if(!confirm('¿Eliminar cliente permanentemente?'))return;
+  db.C=db.C.filter(x=>x.id!==id);db.O=db.O.filter(x=>x.cliId!==id);db.A=db.A.filter(x=>x.cliId!==id);db.Q=db.Q.filter(x=>x.cliId!==id);
+  save();closeModal();toast('Cliente eliminado');nav('clientes');
+}
+function saveAct(){
+  const tit=getVal('ma-tit'),fecha=getVal('ma-fecha');
+  const ok=[setInvalid(v('ma-tit'),!tit),setInvalid(v('ma-fecha'),!fecha)].every(Boolean);
+  if(!ok){toast('Captura título y fecha de la actividad');return;}
+  const a={id:uid(),tipo:parseInt(v('ma-tipo').value),titulo:tit,cliId:v('ma-cli').value,oppId:v('ma-opp')?v('ma-opp').value:'',fecha,hora:getVal('ma-hora'),estado:'pendiente'};
+  db.A.push(a);save();closeModal();toast('✓ Actividad programada. Puedes abrirla en Google Calendar.');render();
+}
+function compAct(id){const a=db.A.find(x=>x.id===id);if(a){a.estado='completada';save();toast('✓ Actividad completada');render();}}
+function eliminarAct(id){if(!confirm('¿Eliminar esta actividad?'))return;db.A=db.A.filter(x=>x.id!==id);save();closeModal();toast('Actividad eliminada');render();}
+
+function saveOpp(){
+  const cliId=v('mo-cli').value,tit=getVal('mo-tit');
+  const ok=[setInvalid(v('mo-cli'),!cliId),setInvalid(v('mo-tit'),!tit)].every(Boolean);
+  if(!ok){toast('Selecciona cliente y título del proyecto');return;}
+  const o={id:uid(),cliId,titulo:tit,servicio:getVal('mo-svc'),valor:money(v('mo-val').value),etapa:parseInt(v('mo-eta').value),creado:today()};
+  db.O.push(o);save();closeModal();toast('✓ Oportunidad guardada');render();
+}
+function eliminarOpp(id){if(!confirm('¿Eliminar oportunidad?'))return;db.O=db.O.filter(x=>x.id!==id);save();closeModal();toast('Oportunidad eliminada');render();}
+function moverEt(oId,etapa){const o=db.O.find(x=>x.id===oId);if(o){o.etapa=etapa;save();render();}}
+
+function actualizarOppListCot(cliId){
+    const oppSel = v('qn-opp');
+    if(!oppSel) return;
+    if(!cliId) { oppSel.innerHTML = '<option value="">(Opcional) Vincular a Oportunidad...</option>'; return; }
+    const opps = db.O.filter(o=>o.cliId===cliId);
+    oppSel.innerHTML = '<option value="">(Opcional) Vincular a Oportunidad...</option>' + opps.map(o=>`<option value="${o.id}">${esc(o.titulo)}</option>`).join('');
+}
+
+function actualizarDatosCot(cliId){
+    actualizarOppListCot(cliId);
+    const c=byId(db.C,cliId);
+    if(!c)return;
+    if(v('qn-contacto')&&!v('qn-contacto').value)v('qn-contacto').value=c.nombre||'';
+}
+
+function actualizarOppListAct(cliId){
+    const oppSel = v('ma-opp');
+    if(!oppSel) return;
+    if(!cliId) { oppSel.innerHTML = '<option value="">Sin oportunidad vinculada</option>'; return; }
+    const opps = db.O.filter(o=>o.cliId===cliId);
+    oppSel.innerHTML = '<option value="">Sin oportunidad vinculada</option>' + opps.map(o=>`<option value="${o.id}">${esc(o.titulo)}</option>`).join('');
+}
+
+function addQI(){
+  const d=document.createElement('div');d.className='qi';
+  d.style.cssText='display:grid;grid-template-columns:1fr 60px 100px 30px;gap:6px;margin-bottom:8px';
+  d.innerHTML='<input type="text" placeholder="Descripción del concepto" class="qi-d"><input type="number" placeholder="Qty" class="qi-q" value="1" min="1"><input type="number" placeholder="Precio $" class="qi-p" min="0" step="100"><button class="bc" style="padding:4px" onclick="this.closest(\'.qi\').remove()">✕</button>';
+  v('qi-cont').appendChild(d);
+}
+
+function saveCot(){
+  const cliId=v('qn-cli').value;
+  if(!setInvalid(v('qn-cli'),!cliId)){toast('Selecciona un cliente para la cotización');return;}
+  const items=[];
+  document.querySelectorAll('.qi').forEach(r=>{
+    const d=txt(r.querySelector('.qi-d').value),q=intn(r.querySelector('.qi-q').value,1),p=money(r.querySelector('.qi-p').value);
+    if(d)items.push({desc:d,qty:q,precio:p});
+  });
+  if(items.length===0){toast('Agrega al menos un concepto');return;}
+  let oppId=v('qn-opp').value;
+  const c=byId(db.C,cliId);
+  if(!oppId){
+    const autoOpp={id:uid(),cliId,titulo:`Cotización ${getVal('qn-num')||today()}`,servicio:(c&&c.servicio)||items[0].desc,valor:items.reduce((s,i)=>s+money(i.qty)*money(i.precio),0),etapa:2,creado:today()};
+    db.O.push(autoOpp);
+    oppId=autoOpp.id;
+  }
+  const q={id:uid(),cliId,oppId,num:getVal('qn-num'),fecha:getVal('qn-fch')||today(),contacto:getVal('qn-contacto'),puesto:getVal('qn-puesto'),items,estado:'borrador'};
+  syncOppFromCot(q);
+  db.Q.push(q);
+  save();closeModal();toast('✓ Cotización guardada');render();
+}
+
+function eliminarCot(id){if(!confirm('¿Eliminar cotización?'))return;db.Q=db.Q.filter(x=>x.id!==id);save();closeModal();toast('Cotización eliminada');render();}
+
+function cambiaCot(id,estado){
+    const q=db.Q.find(x=>x.id===id);
+    if(q){
+        q.estado=estado;
+        syncOppFromCot(q);
+        if(estado === 'aceptada') { promoteClient(q.cliId); toast('Cotización aceptada, oportunidad ganada y cliente actualizado'); }
+        save();render();
+    }
+}
+
+function exportarCotWord(qId){
+  const q=db.Q.find(x=>x.id===qId);if(!q)return;
+  const c=db.C.find(x=>x.id===q.cliId);
+  const contacto=q.contacto||(c?c.nombre:'')||'';
+  const puesto=q.puesto||'';
+  const subtotal=q.items.reduce((s,i)=>s+(i.qty||0)*(i.precio||0),0);
+  const iva=subtotal*0.16;
+  const total=subtotal+iva;
+  const fmxW=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2}).format(n||0);
+  const filas=q.items.map((i,idx)=>{
+    const imp=(i.qty||0)*(i.precio||0);
+    const ivaR=imp*0.16;
+    return`<tr style="background:${idx%2===0?'#ffffff':'#f5f5f4'}">
+      <td style="padding:7px 10px;border:1px solid #ddd;font-size:11pt">${esc(i.desc||'')}</td>
+      <td style="padding:7px 6px;border:1px solid #ddd;text-align:center;font-size:11pt">${i.qty}</td>
+      <td style="padding:7px 6px;border:1px solid #ddd;text-align:right;font-size:11pt">${fmxW(i.precio)}</td>
+      <td style="padding:7px 6px;border:1px solid #ddd;text-align:right;font-size:11pt">${fmxW(ivaR)}</td>
+      <td style="padding:7px 10px;border:1px solid #ddd;text-align:right;font-size:11pt;font-weight:bold">${fmxW(imp)}</td>
+    </tr>`;
+  }).join('');
+
+  const wordHtml=`
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 15">
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+  @page { size: Letter; margin: 2.5cm 2cm 2cm 2cm; }
+  body { font-family: 'Calibri', sans-serif; font-size: 11pt; color: #1a1a1a; }
+  h1 { font-size: 18pt; color: #185fa5; margin: 0 0 4px 0; }
+  h2 { font-size: 11pt; color: #5f5e5a; font-weight: normal; margin: 0 0 20px 0; }
+  .encabezado { display: flex; justify-content: space-between; margin-bottom: 24px; border-bottom: 2px solid #185fa5; padding-bottom: 14px; }
+  .empresa-titulo { font-size: 22pt; font-weight: bold; color: #185fa5; }
+  .cotnum { font-size: 14pt; font-weight: bold; color: #1a1a1a; }
+  .seccion-titulo { font-size: 9pt; font-weight: bold; color: #5f5e5a; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px 0; border-bottom: 1px solid #e5e3de; padding-bottom: 3px; }
+  .datos-cliente { background: #f5f5f4; border-left: 3px solid #185fa5; padding: 12px 16px; margin-bottom: 22px; }
+  .datos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+  .dato-lbl { font-size: 9pt; color: #9a9894; margin-bottom: 1px; }
+  .dato-val { font-size: 11pt; font-weight: 600; }
+  table.conceptos { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  table.conceptos th { background: #185fa5; color: #fff; padding: 8px 10px; font-size: 10pt; font-weight: bold; }
+  table.conceptos td { border: 1px solid #ddd; font-size: 11pt; }
+  .totales-tabla { float: right; min-width: 260px; border-collapse: collapse; margin-top: 8px; }
+  .totales-tabla td { padding: 7px 14px; font-size: 11pt; border: 1px solid #e5e3de; }
+  .total-final { background: #e6f1fb; font-size: 13pt; font-weight: bold; color: #185fa5; }
+  .pie { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e5e3de; font-size: 9pt; color: #9a9894; text-align: center; }
+  .clearfix::after { content: ''; display: table; clear: both; }
+</style>
+</head>
+<body>
+  <div class="encabezado">
+    <div>
+      <div class="empresa-titulo">⚙️ CRM Industrial</div>
+      <div style="font-size:10pt;color:#5f5e5a;margin-top:4px">Servicios y Equipos Industriales</div>
+    </div>
+    <div style="text-align:right">
+      <div class="cotnum">${esc(q.num||'')}</div>
+      <div style="font-size:10pt;color:#5f5e5a;margin-top:4px">Fecha: ${fdt(q.fecha)}</div>
+      <div style="margin-top:6px;display:inline-block;padding:3px 10px;background:${q.estado==='aceptada'?'#eaf3de':q.estado==='enviada'?'#eeedfe':q.estado==='rechazada'?'#fcebeb':'#f1efe8'};border-radius:4px;font-size:9pt;font-weight:bold;color:${q.estado==='aceptada'?'#3b6d11':q.estado==='enviada'?'#534ab7':q.estado==='rechazada'?'#a32d2d':'#5f5e5a'}">${(q.estado||'').toUpperCase()}</div>
+    </div>
+  </div>
+
+  <div class="datos-cliente">
+    <div class="seccion-titulo">Datos del cliente</div>
+    <div class="datos-grid">
+      <div><div class="dato-lbl">Empresa</div><div class="dato-val">${c?esc(c.empresa||''):'—'}</div></div>
+      <div><div class="dato-lbl">Industria</div><div class="dato-val">${c?esc(c.industria||'—'):'—'}</div></div>
+      <div><div class="dato-lbl">Nombre del contacto</div><div class="dato-val">${esc(contacto)||'—'}</div></div>
+      <div><div class="dato-lbl">Puesto del contacto</div><div class="dato-val">${esc(puesto)||'—'}</div></div>
+      ${c&&c.tel?`<div><div class="dato-lbl">Teléfono</div><div class="dato-val">${esc(c.tel)}</div></div>`:''}
+      ${c&&c.email?`<div><div class="dato-lbl">Correo electrónico</div><div class="dato-val">${esc(c.email)}</div></div>`:''}
+      ${c&&c.ubicacion?`<div style="grid-column:1/-1"><div class="dato-lbl">Ubicación planta / empresa</div><div class="dato-val">${esc(c.ubicacion)}</div></div>`:''}
+    </div>
+  </div>
+
+  <div class="seccion-titulo" style="margin-bottom:8px">Conceptos cotizados</div>
+  <table class="conceptos">
+    <thead>
+      <tr>
+        <th style="text-align:left;width:46%">Concepto / Descripción</th>
+        <th style="text-align:center;width:9%">Cant.</th>
+        <th style="text-align:right;width:18%">Precio unitario</th>
+        <th style="text-align:right;width:12%">IVA 16%</th>
+        <th style="text-align:right;width:15%">Importe</th>
+      </tr>
+    </thead>
+    <tbody>${filas}</tbody>
+  </table>
+
+  <div class="clearfix">
+    <table class="totales-tabla" align="right">
+      <tr><td>Subtotal</td><td style="text-align:right;font-weight:600">${fmxW(subtotal)}</td></tr>
+      <tr><td>IVA (16%)</td><td style="text-align:right;font-weight:600">${fmxW(iva)}</td></tr>
+      <tr class="total-final"><td><b>TOTAL</b></td><td style="text-align:right"><b>${fmxW(total)}</b></td></tr>
+    </table>
+  </div>
+
+  <div class="pie">
+    Cotización generada por CRM Industrial &nbsp;|&nbsp; ${new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}
+    <br>Precios expresados en pesos mexicanos (MXN). IVA incluido en el total.
+  </div>
+</body>
+</html>`;
+
+  const blob=new Blob(['\ufeff'+wordHtml],{type:'application/msword;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(q.num||'Cotizacion')+'_'+((c?c.empresa:'')||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'.doc';
+  a.click();
+  toast('✓ Cotización exportada a Word');
+}
+
+nav('dashboard');
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- PWA: Service Worker + botón de instalación -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[PWA] SW registrado:', reg.scope))
+      .catch(err => console.warn('[PWA] Error SW:', err));
+  });
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!document.getElementById('btn-instalar')) {
+    const btn = document.createElement('button');
+    btn.id = 'btn-instalar';
+    btn.className = 'bp';
+    btn.innerHTML = '📲 Instalar App';
+    btn.style.cssText = 'background:#eaf3de;color:#3b6d11;border-color:#a8d580;';
+    btn.onclick = () => {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(choice => {
+        if (choice.outcome === 'accepted') toast('✓ App instalada');
+        btn.remove();
+        deferredPrompt = null;
+      });
+    };
+    const navBar = document.getElementById('nav-bar');
+    if (navBar) navBar.appendChild(btn);
+  }
+});
+window.addEventListener('appinstalled', () => {
+  toast('✓ CRM Industrial instalado en tu dispositivo');
+  const btn = document.getElementById('btn-instalar');
+  if (btn) btn.remove();
+  deferredPrompt = null;
+});
+</script>
+</body>
+</html>
